@@ -9,8 +9,9 @@ public class Note {
     public Note(String title, String author, String content) {
         this.title = title;
         this.author = author;
-        this.created = created;
-        this.modified = modified;
+        this.content = content;
+        this.created = java.time.Instant.now().toString();
+        this.modified = this.created;
         this.tags = "";
 
         }

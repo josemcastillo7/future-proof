@@ -3,11 +3,13 @@ public class TestNote {
 
         Note note = new Note("My first note", "Joseph", "this is my fisrt content");
         //lofi
+        
+        note.saveToFile();
 
         System.out.println(note.toString());
     }
  }
 
- 
+
 
 

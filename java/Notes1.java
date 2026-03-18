@@ -144,6 +144,23 @@ public class Notes1 {
         return true;
     }
 
+    private static boolean createNote(Path notesDir) {
+        java.util.Scanner scanner = new java.util.Scanner(System.in);
+
+        System.out.println("Enter note title:");
+        String title = scanner.nextLine();
+
+        System.out.println("Enter your name:");
+        String author = scanner.nextLine();
+
+        System.out.println("Enter note content:");
+        String content = scanner.nextLine();
+
+        Note note = new Note(title, author, content);
+        note.saveToFile();
+        return true;
+    }
+
     /**
      * Display help information.
      */
@@ -202,6 +219,10 @@ public class Notes1 {
                 boolean success = listNotes(notesDir);
                 finish(success ? 0 : 1);
                 break;
+                case "create":
+                    boolean created = createNote(notesDir);
+                    finish(created ? 0 : 1);
+                    break;
             default:
                 System.err.println("Error: Unknown command '" + command + "'");
                 System.err.println("Try 'java Notes1 help' for more information.");

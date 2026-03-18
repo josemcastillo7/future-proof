@@ -191,7 +191,7 @@ public class Notes1 {
             return false;
         }
 
-        java.util.Scanner scanner = new java.util.Scanner(Sysytem.in);
+        java.util.Scanner scanner = new java.util.Scanner(System.in);
         System.out.print("Are you sure you want to delete " + noteId + "'?(yes/no)");
         String answer = scanner.nextLine().trim().toLowerCase();
 

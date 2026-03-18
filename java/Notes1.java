@@ -161,6 +161,55 @@ public class Notes1 {
         return true;
     }
 
+    private static boolean readNote(Path notesDir, String noteId) {
+        Path notesSubdir = notesDir.resolve("notes");
+        Path filePath = notesSubdir.resolve(noteId + ".note");
+
+        if (!Files.exists(filePath)) {
+            System.err.println("Error: Note not found:" + noteId);
+            System.err.println("Use 'java Notes1 list' to see available notes");
+            return false;
+        }
+
+        try {
+            String content = Files.readString(filePath);
+            System.out.println(content);
+            return true;
+        } catch (IOException e) {
+            System.err.println("Error reading note: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private static boolean deleteNote(Path notesDir, String noteId) {
+        Path notesSubdir = notesDir.resolve("notes");
+        Path filePath = notesSubdir.resolve(noteId + ".note");
+
+        if(!Files.exists(filePath)) {
+            System.err.println("Error: Note not found:" + noteId);
+            System.err.println("Use 'java Notes1 list' to see available notes");
+            return false;
+        }
+
+        java.util.Scanner scanner = new java.util.Scanner(Sysytem.in);
+        System.out.print("Are you sure you want to delete " + noteId + "'?(yes/no)");
+        String answer = scanner.nextLine().trim().toLowerCase();
+
+        if (!answer.equals("yes")) {
+            System.out.println("Delete Cancelled.");
+            return true;
+        }
+
+        try {
+            Files.delete(filePath);
+            System.out.println("Note delete: " + noteId);
+            return true;
+        } catch (IOException e) {
+            System.err.println("Error: deleting note: " + e.getMessage());
+            return false;
+        }
+    }
+
     /**
      * Display help information.
      */
@@ -223,6 +272,24 @@ public class Notes1 {
                     boolean created = createNote(notesDir);
                     finish(created ? 0 : 1);
                     break;
+                    case "read":
+                        if (args.length < 2) {
+                            System.err.println("Error: please provide a note name.");
+                            System.err.println("Usage: java Notes1 read <notes-name>");
+                            finish(1);
+                        }
+                        boolean read = readNote(notesDir, args[1]);
+                      finish(read ? 0:1);
+                      break;
+                      case "delete":
+                        if (args.length < 2) {
+                            System.err.println("Error: please provide a note name");
+                            System.err.println("Usage: java Notes1 delete <note-name>");
+                            finish(1);
+                        }
+                        boolean deleted = deleteNote(notesDir, args[1]);
+                        finish(deleted ? 0 : 1);
+                        break;
             default:
                 System.err.println("Error: Unknown command '" + command + "'");
                 System.err.println("Try 'java Notes1 help' for more information.");

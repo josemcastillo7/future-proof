@@ -210,6 +210,50 @@ public class Notes1 {
         }
     }
 
+    private static boolean searchNotes(Path notesDir, String query) {
+    Path notesSubdir = notesDir.resolve("notes");
+    List<Path> noteFiles;
+    try (Stream<Path> paths = Files.walk(notesSubdir, 1)) {
+        noteFiles = paths
+                .filter(Files::isRegularFile)
+                .filter(p -> {
+                    String name = p.getFileName().toString();
+                    return name.endsWith(".md") || name.endsWith(".note") || name.endsWith(".txt");
+                })
+                .sorted()
+                .toList();
+    } catch (IOException e) {
+        System.err.println("Error searching notes: " + e.getMessage());
+        return false;
+    }
+    String lowerQuery = query.toLowerCase();
+    int matchCount = 0;
+    System.out.println("Searching for: " + query);
+    System.out.println("=".repeat(60));
+    for (Path noteFile : noteFiles) {
+        try {
+            String content = Files.readString(noteFile);
+            if (content.toLowerCase().contains(lowerQuery)) {
+                Map<String, String> metadata = parseYamlHeader(noteFile);
+                String title = metadata.getOrDefault("title", noteFile.getFileName().toString());
+                String tags = metadata.getOrDefault("tags", "");
+                System.out.println("\n" + noteFile.getFileName());
+                System.out.println("  Title: " + title);
+                if (!tags.isEmpty()) {
+                    System.out.println("  Tags: " + tags);
+                }
+                matchCount++;
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading: " + noteFile.getFileName());
+        }
+    }
+    System.out.println("\n" + matchCount + " note(s) found matching '" + query + "'");
+    return true;
+}
+
+    
+
     /**
      * Display help information.
      */
@@ -290,6 +334,16 @@ public class Notes1 {
                         boolean deleted = deleteNote(notesDir, args[1]);
                         finish(deleted ? 0 : 1);
                         break;
+
+                        case "search":
+                            if (args.length < 2) {
+                                System.err.println("Error Please provide a search term");
+                                System.err.println("Usage: java Notes1 search <query>");
+                                finish(1);
+                            }
+                            boolean search = searchNotes(notesDir, args[1]);
+                            finish(search ? 0 : 1);
+                            break;
             default:
                 System.err.println("Error: Unknown command '" + command + "'");
                 System.err.println("Try 'java Notes1 help' for more information.");

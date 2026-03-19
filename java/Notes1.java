@@ -157,7 +157,7 @@ public class Notes1 {
         String content = scanner.nextLine();
 
         Note note = new Note(title, author, content);
-        note.saveToFile();
+        note.saveToFile(); 
         return true;
     }
 

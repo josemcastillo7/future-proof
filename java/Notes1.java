@@ -252,6 +252,46 @@ public class Notes1 {
     return true;
 }
 
+private static boolean showStats(Path notesDir) {
+    Path notesSubdir = notesDir.resolve("notes");
+
+    // Find all note files
+    List<Path> noteFiles;
+    try (Stream<Path> paths = Files.walk(notesSubdir, 1)) {
+        noteFiles = paths
+                .filter(Files::isRegularFile)
+                .filter(p -> {
+                    String name = p.getFileName().toString();
+                    return name.endsWith(".md") || name.endsWith(".note") || name.endsWith(".txt");
+                })
+                .sorted()
+                .toList();
+    } catch (IOException e) {
+        System.err.println("Error reading notes: " + e.getMessage());
+        return false;
+    }
+
+    // Count tags
+    int totalTags = 0;
+    for (Path noteFile : noteFiles) {
+        Map<String, String> metadata = parseYamlHeader(noteFile);
+        String tags = metadata.getOrDefault("tags", "[]");
+        if (!tags.equals("[]") && !tags.isEmpty()) {
+            totalTags++;
+        }
+    }
+
+    // Print stats
+    System.out.println("Notes Statistics");
+    System.out.println("=".repeat(60));
+    System.out.println("Total notes:     " + noteFiles.size());
+    System.out.println("Notes with tags: " + totalTags);
+    System.out.println("Notes directory: " + notesSubdir);
+    return true;
+}
+
+
+
     
 
     /**
@@ -343,6 +383,10 @@ public class Notes1 {
                             }
                             boolean search = searchNotes(notesDir, args[1]);
                             finish(search ? 0 : 1);
+                            break;
+                            case "stats": 
+                            boolean stats = showStats(notesDir);
+                            finish(stats ? 0 : 1);
                             break;
             default:
                 System.err.println("Error: Unknown command '" + command + "'");

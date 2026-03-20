@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Notes Manager</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 40px auto; padding: 20px; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #output { margin-top: 20px; padding: 20px; background: #f4f4f4; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>📝 Notes Manager</h1>
+
+    <button onclick="listNotes()">List All Notes</button>
+
+    <input id="searchBox" type="text" placeholder="Search notes...">
+<button onclick="searchNotes()">Search</button>
+
+<br><br>
+<input id="newTitle" type="text" placeholder="Note title..." style="padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #ccc;">
+<input id="newContent" type="text" placeholder="Note content..." style="padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #ccc;">
+<button onclick="createNote()">Create Note</button>
+
+    <div id="output">Click a button to get started!</div>
+
+    <script>
+        async function listNotes() {
+            const response = await fetch('/api/notes');
+            const notes = await response.json();
+            document.getElementById('output').innerHTML =
+                '<h3>Your Notes:</h3>' +     notes.map(n => '<p>📄 <a href="#" onclick="readNote(\'' + n + '\')">' + n + '</a> <button onclick="deleteNote(\'' + n + '\')">🗑️</button></p>').join('');
+
+        }
+
+
+
+       async function searchNotes() {
+    const query = document.getElementById('searchBox').value;
+    const response = await fetch('/api/search?q=' + query);
+    const notes = await response.json();
+    document.getElementById('output').innerHTML =
+        '<h3>Search Results:</h3>' + notes.map(n => '<p>📄 <a href="#" onclick="readNote(\'' + n + '\')">' + n + '</a></p>').join('');
+}
+
+
+
+  async function readNote(name) {
+    const response = await fetch('/api/notes/' + name);
+    const content = await response.text();
+    document.getElementById('output').innerHTML =
+        '<h3>' + name + '</h3><pre>' + content + '</pre>';
+}
+
+ async function createNote() {
+            const title = document.getElementById('newTitle').value;
+            const content = document.getElementById('newContent').value;
+            const response = await fetch('/api/notes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: title, content: content })
+            });
+            const result = await response.text();
+            document.getElementById('output').innerHTML = '<p>✅ ' + result + '</p>';
+        }
+
+        async function deleteNote(name) {
+    if (!confirm("Delete " + name + "?")) return;
+    const response = await fetch('/api/notes/' + name, { method: 'DELETE' });
+    const result = await response.text();
+    document.getElementById('output').innerHTML = '<p>🗑️ ' + result + '</p>';
+    listNotes();
+}
+    </script>
+</body>
+</html>

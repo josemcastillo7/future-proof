@@ -3,6 +3,7 @@ package com.notes.notes_manager;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Stream;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -62,8 +63,9 @@ public List<java.util.Map<String, String>> getNotesMeta() throws Exception {
 
     
 
-    @GetMapping("/api/search")
-public List<String> searchNotes(@RequestParam String q) throws Exception {
+   @GetMapping("/api/search")
+public List<java.util.Map<String, String>> searchNotes(
+        @RequestParam String q) throws Exception {
     try (Stream<Path> paths = Files.walk(NOTES_DIR, 1)) {
         return paths
             .filter(Files::isRegularFile)
@@ -71,12 +73,23 @@ public List<String> searchNotes(@RequestParam String q) throws Exception {
                 try {
                     return Files.readString(p).toLowerCase()
                         .contains(q.toLowerCase());
-                } catch (Exception e) {
-                    return false;
-                }
+                } catch (Exception e) { return false; }
             })
-            .map(p -> p.getFileName().toString())
             .sorted()
+            .map(p -> {
+                java.util.Map<String, String> meta = new HashMap<>();
+                meta.put("file", p.getFileName().toString());
+                meta.put("title", p.getFileName().toString());
+                meta.put("priority", "none");
+                try {
+                    List<String> lines = Files.readAllLines(p);
+                    for (String line : lines) {
+                        if (line.startsWith("title:")) meta.put("title", line.substring(6).trim());
+                        if (line.startsWith("priority:")) meta.put("priority", line.substring(9).trim());
+                    }
+                } catch (Exception e) {}
+                return meta;
+            })
             .toList();
     }
 }

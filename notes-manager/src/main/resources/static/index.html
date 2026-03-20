@@ -1,76 +1,182 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Notes Manager</title>
-    <style>
-        body { font-family: Arial; max-width: 800px; margin: 40px auto; padding: 20px; }
-        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        #output { margin-top: 20px; padding: 20px; background: #f4f4f4; border-radius: 5px; }
-    </style>
+<title>Notes Manager</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; color: #fff; font-family: Arial; min-height: 100vh; padding: 30px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 24px; }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #00ff88; }
+  h1 { font-size: 22px; font-weight: bold; color: #fff; }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+  input { background: #111; border: 1px solid #222; color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 14px; width: 220px; outline: none; }
+  input:focus { border-color: #00ff88; }
+  input::placeholder { color: #444; }
+  .btn { padding: 10px 18px; border-radius: 20px; border: none; cursor: pointer; font-size: 13px; font-weight: bold; }
+  .btn-green { background: transparent; color: #00ff88; border: 1px solid #00ff88; }
+  .btn-green:hover { background: #00ff8822; }
+  .btn-white { background: transparent; color: #fff; border: 1px solid #333; }
+  .btn-white:hover { background: #1a1a1a; }
+  .btn-red { background: transparent; color: #ff4444; border: 1px solid #ff4444; font-size: 11px; padding: 5px 10px; border-radius: 20px; cursor: pointer; }
+  .btn-red:hover { background: #ff444422; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .card { background: #111; border: 1px solid #1a1a1a; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; border-left: 3px solid #00ff88; }
+  .card.urgent { border-left-color: #ff4444; }
+  .card.high { border-left-color: #ff8800; }
+  .card.medium { border-left-color: #ffee00; }
+  .card.low { border-left-color: #00ff88; }
+  .card.none { border-left-color: #333; }
+  .card:hover { border-color: #333; }
+  .card-title { font-size: 14px; font-weight: bold; color: #fff; cursor: pointer; }
+  .card-title:hover { color: #00ff88; }
+  .card-file { font-size: 11px; color: #333; }
+  .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+  .badge { font-size: 11px; font-weight: bold; }
+  .badge-urgent { color: #ff4444; }
+  .badge-high { color: #ff8800; }
+  .badge-medium { color: #ffee00; }
+  .badge-low { color: #00ff88; }
+  .badge-none { color: #444; }
+  .modal-wrap { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10; justify-content: center; align-items: center; }
+  .modal-wrap.open { display: flex; }
+  .modal { background: #111; border: 1px solid #222; border-radius: 16px; padding: 28px; width: 460px; display: flex; flex-direction: column; gap: 14px; }
+  .modal h2 { font-size: 16px; color: #fff; }
+  .modal input, .modal textarea, .modal select { width: 100%; background: #0a0a0a; border: 1px solid #222; color: #fff; padding: 10px; border-radius: 8px; font-size: 14px; outline: none; }
+  .modal input:focus, .modal textarea:focus { border-color: #00ff88; }
+  .modal textarea { height: 120px; resize: vertical; }
+  .modal select option { background: #111; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .note-view { background: #111; border: 1px solid #1a1a1a; border-radius: 12px; padding: 24px; white-space: pre-wrap; font-size: 14px; color: #aaa; line-height: 1.7; margin-top: 16px; }
+  .back-btn { background: transparent; color: #fff; border: 1px solid #333; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 13px; margin-bottom: 16px; }
+  .back-btn:hover { background: #1a1a1a; }
+  .empty { color: #333; font-size: 14px; padding: 40px 0; }
+</style>
 </head>
 <body>
-    <h1>📝 Notes Manager</h1>
 
-    <button onclick="listNotes()">List All Notes</button>
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="dot"></div>
+    <h1>Notes Manager</h1>
+  </div>
+  <button class="btn btn-green" onclick="openModal()">+ New Note</button>
+</div>
 
-    <input id="searchBox" type="text" placeholder="Search notes...">
-<button onclick="searchNotes()">Search</button>
+<div class="toolbar">
+  <button class="btn btn-white" onclick="showAll()">All Notes</button>
+  <input id="searchBox" type="text" placeholder="Search notes...">
+  <button class="btn btn-green" onclick="searchNotes()">Search</button>
+</div>
 
-<br><br>
-<input id="newTitle" type="text" placeholder="Note title..." style="padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #ccc;">
-<input id="newContent" type="text" placeholder="Note content..." style="padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #ccc;">
-<button onclick="createNote()">Create Note</button>
+<div id="output" class="cards"></div>
 
-    <div id="output">Click a button to get started!</div>
+<div class="modal-wrap" id="createModal">
+  <div class="modal">
+    <h2>New Note</h2>
+    <input id="newTitle" type="text" placeholder="Title...">
+    <textarea id="newContent" placeholder="Content..."></textarea>
+    <select id="newPriority">
+      <option value="none">No Priority</option>
+      <option value="low">Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+      <option value="urgent">Urgent</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn btn-white" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green" onclick="createNote()">Save</button>
+    </div>
+  </div>
+</div>
 
-    <script>
-        async function listNotes() {
-            const response = await fetch('/api/notes');
-            const notes = await response.json();
-            document.getElementById('output').innerHTML =
-                '<h3>Your Notes:</h3>' +     notes.map(n => '<p>📄 <a href="#" onclick="readNote(\'' + n + '\')">' + n + '</a> <button onclick="deleteNote(\'' + n + '\')">🗑️</button></p>').join('');
-
-        }
-
-
-
-       async function searchNotes() {
-    const query = document.getElementById('searchBox').value;
-    const response = await fetch('/api/search?q=' + query);
-    const notes = await response.json();
-    document.getElementById('output').innerHTML =
-        '<h3>Search Results:</h3>' + notes.map(n => '<p>📄 <a href="#" onclick="readNote(\'' + n + '\')">' + n + '</a></p>').join('');
+<script>
+function getPriority(p) {
+  p = (p || 'none').toLowerCase().trim();
+  const map = {
+    urgent: ['urgent', '● Urgent'],
+    high:   ['high',   '● High'],
+    medium: ['medium', '● Medium'],
+    low:    ['low',    '● Low'],
+  };
+  return map[p] || ['none', '● None'];
 }
 
-
-
-  async function readNote(name) {
-    const response = await fetch('/api/notes/' + name);
-    const content = await response.text();
-    document.getElementById('output').innerHTML =
-        '<h3>' + name + '</h3><pre>' + content + '</pre>';
+function renderCards(notes) {
+  const out = document.getElementById('output');
+  if (notes.length === 0) {
+    out.className = '';
+    out.innerHTML = '<p class="empty">No notes found.</p>';
+    return;
+  }
+  out.className = 'cards';
+  out.innerHTML = notes.map(n => {
+    const [cls, label] = getPriority(n.priority);
+    return `
+      <div class="card ${cls}">
+        <div class="card-title" onclick="readNote('${n.file}')">${n.title}</div>
+        <div class="card-file">${n.file}</div>
+        <div class="card-footer">
+          <span class="badge badge-${cls}">${label}</span>
+          <button class="btn-red" onclick="deleteNote('${n.file}')">Delete</button>
+        </div>
+      </div>`;
+  }).join('');
 }
 
- async function createNote() {
-            const title = document.getElementById('newTitle').value;
-            const content = document.getElementById('newContent').value;
-            const response = await fetch('/api/notes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: title, content: content })
-            });
-            const result = await response.text();
-            document.getElementById('output').innerHTML = '<p>✅ ' + result + '</p>';
-        }
-
-        async function deleteNote(name) {
-    if (!confirm("Delete " + name + "?")) return;
-    const response = await fetch('/api/notes/' + name, { method: 'DELETE' });
-    const result = await response.text();
-    document.getElementById('output').innerHTML = '<p>🗑️ ' + result + '</p>';
-    listNotes();
+async function showAll() {
+  const res = await fetch('/api/notes/meta');
+  renderCards(await res.json());
 }
-    </script>
+
+async function searchNotes() {
+  const q = document.getElementById('searchBox').value;
+  const res = await fetch('/api/search?q=' + q);
+  const files = await res.json();
+  renderCards(files.map(f => ({ file: f, title: f, priority: 'none' })));
+}
+
+async function readNote(name) {
+  const res = await fetch('/api/notes/' + name);
+  const content = await res.text();
+  const out = document.getElementById('output');
+  out.className = '';
+  out.innerHTML = `
+    <button class="back-btn" onclick="showAll()">← Back</button>
+    <div class="note-view">${content}</div>`;
+}
+
+async function createNote() {
+  const title = document.getElementById('newTitle').value;
+  const content = document.getElementById('newContent').value;
+  const priority = document.getElementById('newPriority').value;
+  await fetch('/api/notes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, content, priority })
+  });
+  closeModal();
+  document.getElementById('newTitle').value = '';
+  document.getElementById('newContent').value = '';
+  showAll();
+}
+
+async function deleteNote(name) {
+  if (!confirm('Delete ' + name + '?')) return;
+  await fetch('/api/notes/' + name, { method: 'DELETE' });
+  showAll();
+}
+
+function openModal() { document.getElementById('createModal').classList.add('open'); }
+function closeModal() { document.getElementById('createModal').classList.remove('open'); }
+
+showAll();
+</script>
 </body>
 </html>
+```
+
+Restart the server:
+```
+Ctrl + C
+./mvnw spring-boot:run

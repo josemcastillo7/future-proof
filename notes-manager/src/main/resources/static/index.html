@@ -66,11 +66,28 @@
   .modal textarea { height: 130px; resize: vertical; }
   .modal select option { background: #0d0d0d; }
   .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
-  .note-view { background: #0d0d0d; border: 1px solid #151515; border-radius: 14px; padding: 28px; white-space: pre-wrap; font-size: 14px; color: #888; line-height: 1.8; margin-top: 16px; }
+  .note-view { background: #0d0d0d; border: 1px solid #151515; border-radius: 14px; padding: 28px; white-space: pre-wrap; font-size: 14px; color: #888; line-height: 1.8; margin-top: 16px; position: relative; }
   .back-btn { background: transparent; color: #fff; border: 1px solid #222; padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 13px; margin-bottom: 16px; }
   .back-btn:hover { background: #111; }
   .empty { color: #222; font-size: 14px; padding: 60px 0; text-align: center; }
   .section-title { font-size: 12px; color: #333; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
+  .edit-area { width: 100%; background: #080808; border: 1px solid #1a1a1a; color: #fff; padding: 16px; border-radius: 10px; font-size: 14px; line-height: 1.8; min-height: 200px; outline: none; margin-top: 12px; }
+  .edit-area:focus { border-color: #00ff88; }
+  .drop-zone { border: 2px dashed #222; border-radius: 10px; padding: 20px; text-align: center; color: #333; font-size: 13px; margin-top: 16px; transition: all 0.2s; }
+  .drop-zone.dragover { border-color: #00ff88; color: #00ff88; }
+  .note-images { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .note-img { max-width: 200px; max-height: 200px; border-radius: 8px; border: 1px solid #222; object-fit: cover; }
+  .quiz-container { margin-top: 20px; }
+  .quiz-question { background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .quiz-question-text { font-size: 15px; font-weight: bold; color: #fff; margin-bottom: 14px; }
+  .quiz-option { display: block; width: 100%; background: #111; border: 1px solid #1a1a1a; color: #aaa; padding: 10px 16px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; font-size: 13px; text-align: left; transition: all 0.2s; }
+  .quiz-option:hover { border-color: #00ff88; color: #fff; }
+  .quiz-option.correct { border-color: #00ff88; background: #001a0a; color: #00ff88; }
+  .quiz-option.wrong { border-color: #ff4444; background: #1a0000; color: #ff4444; }
+  .quiz-score { font-size: 20px; font-weight: bold; color: #00ff88; text-align: center; padding: 20px; }
+  .add-question-form { background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 12px; padding: 20px; margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .add-question-form input { width: 100%; }
+  .correct-select { background: #0f0f0f; border: 1px solid #1a1a1a; color: #fff; padding: 10px; border-radius: 8px; width: 100%; outline: none; }
 </style>
 </head>
 <body>
@@ -97,6 +114,13 @@
   <div class="toolbar">
     <input id="searchBox" type="text" placeholder="Search notes..." onkeydown="if(event.key==='Enter') searchNotes()">
     <button class="btn btn-outline" onclick="searchNotes()">Search</button>
+    <select id="sortSelect" onchange="sortNotes()" style="background:#0f0f0f; border:1px solid #1a1a1a; color:#fff; padding:8px 14px; border-radius:20px; font-size:12px; outline:none; cursor:pointer;">
+      <option value="default">Sort: Default</option>
+      <option value="date-new">Sort: Newest First</option>
+      <option value="date-old">Sort: Oldest First</option>
+      <option value="priority">Sort: Priority</option>
+      <option value="title">Sort: A-Z</option>
+    </select>
     <div class="filter-group">
       <button class="fbtn fbtn-all active" id="filter-all" onclick="filterByPriority('all')">All</button>
       <button class="fbtn fbtn-urgent" id="filter-urgent" onclick="filterByPriority('urgent')">● Urgent</button>
@@ -167,7 +191,7 @@ function renderCards(notes) {
           <div class="card-title">${n.title}</div>
           <span class="badge ${badgeCls}">${label}</span>
         </div>
-        <div class="card-file">${n.file}</div>
+        <div class="card-file">${n.created ? n.created.substring(0, 10) : n.file}</div>
         <div class="card-footer">
           <button class="btn-del" onclick="event.stopPropagation(); deleteNote('${n.file}')">Delete</button>
         </div>
@@ -201,14 +225,199 @@ async function filterByPriority(priority) {
   document.getElementById('sectionTitle').textContent = priority.charAt(0).toUpperCase() + priority.slice(1) + ' Notes';
 }
 
+function sortNotes() {
+  const sort = document.getElementById('sortSelect').value;
+  const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3, none: 4 };
+  let sorted = [...allNotes];
+  if (sort === 'date-new') {
+    sorted.sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+  } else if (sort === 'date-old') {
+    sorted.sort((a, b) => (a.created || '').localeCompare(b.created || ''));
+  } else if (sort === 'priority') {
+    sorted.sort((a, b) =>
+      (priorityOrder[a.priority?.toLowerCase()] ?? 4) -
+      (priorityOrder[b.priority?.toLowerCase()] ?? 4)
+    );
+  } else if (sort === 'title') {
+    sorted.sort((a, b) => a.title.localeCompare(b.title));
+  }
+  renderCards(sorted);
+}
+
 async function readNote(name) {
   const res = await fetch('/api/notes/' + name);
   const content = await res.text();
+  const lines = content.split('\n');
+  let pastYaml = false;
+  let yamlCount = 0;
+  let noteContent = '';
+  for (const line of lines) {
+    if (line.trim() === '---') { yamlCount++; if (yamlCount === 2) pastYaml = true; continue; }
+    if (pastYaml) noteContent += line + '\n';
+  }
   const out = document.getElementById('output');
   out.className = '';
   out.innerHTML = `
     <button class="back-btn" onclick="showAll()">← Back to Notes</button>
-    <div class="note-view">${content}</div>`;
+    <button class="btn btn-green" style="margin-left:10px" onclick="editMode('${name}')">Edit</button>
+    <button class="btn btn-outline" style="margin-left:10px" onclick="studyMode('${name}')">📚 Study</button>
+    <div class="note-view">${noteContent.trim()}</div>
+    <div class="drop-zone" id="dropZone"
+         ondragover="event.preventDefault(); this.classList.add('dragover')"
+         ondragleave="this.classList.remove('dragover')"
+         ondrop="handleDrop(event, '${name}')">
+      🖼️ Drag and drop a photo here
+    </div>
+    <div class="note-images" id="noteImages"></div>`;
+  loadImages(name);
+}
+
+async function handleDrop(event, name) {
+  event.preventDefault();
+  document.getElementById('dropZone').classList.remove('dragover');
+  const file = event.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) {
+    alert('Please drop an image file!');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  await fetch('/api/notes/' + name + '/images', {
+    method: 'POST',
+    body: formData
+  });
+  loadImages(name);
+}
+
+async function loadImages(name) {
+  const prefix = name.replace('.note', '').replace('.md', '');
+  const res = await fetch('/api/images/list/' + prefix);
+  if (!res.ok) return;
+  const images = await res.json();
+  const container = document.getElementById('noteImages');
+  if (!container) return;
+  container.innerHTML = images.map(img =>
+    `<img class="note-img" src="/api/images/${img}" alt="${img}">`
+  ).join('');
+}
+
+async function studyMode(name) {
+  const res = await fetch('/api/notes/' + name + '/quiz');
+  const questions = await res.json();
+  const out = document.getElementById('output');
+  out.className = '';
+  if (questions.length === 0) {
+    out.innerHTML = `
+      <button class="back-btn" onclick="readNote('${name}')">← Back</button>
+      <p style="color:#444; margin: 20px 0;">No quiz questions yet!</p>
+      ${renderAddQuestionForm(name)}`;
+    return;
+  }
+  out.innerHTML = `
+    <button class="back-btn" onclick="readNote('${name}')">← Back to Note</button>
+    <button class="btn btn-outline" style="margin-left:10px" onclick="addQuestionMode('${name}')">+ Add Question</button>
+    <div class="quiz-container" id="quizContainer">
+      ${questions.map((q, i) => `
+        <div class="quiz-question" id="q${i}">
+          <div class="quiz-question-text">${i+1}. ${q.question}</div>
+          ${q.options.map((opt, j) => `
+            <button class="quiz-option" id="opt${i}-${j}"
+              onclick="checkAnswer(${i}, ${j}, ${q.correct})">
+              ${String.fromCharCode(65+j)}. ${opt}
+            </button>`).join('')}
+        </div>`).join('')}
+    </div>`;
+}
+
+function checkAnswer(qIndex, selectedIndex, correctIndex) {
+  const buttons = document.querySelectorAll(`#q${qIndex} .quiz-option`);
+  buttons.forEach(b => b.disabled = true);
+  if (selectedIndex === correctIndex) {
+    buttons[selectedIndex].classList.add('correct');
+  } else {
+    buttons[selectedIndex].classList.add('wrong');
+    buttons[correctIndex].classList.add('correct');
+  }
+}
+
+function addQuestionMode(name) {
+  const out = document.getElementById('output');
+  out.className = '';
+  out.innerHTML = `
+    <button class="back-btn" onclick="studyMode('${name}')">← Back to Quiz</button>
+    ${renderAddQuestionForm(name)}`;
+}
+
+function renderAddQuestionForm(name) {
+  return `
+    <div class="add-question-form">
+      <p style="color:#00ff88; font-weight:bold; font-size:14px;">Add New Question</p>
+      <input id="qQuestion" type="text" placeholder="Question...">
+      <input id="qOpt0" type="text" placeholder="Option A...">
+      <input id="qOpt1" type="text" placeholder="Option B...">
+      <input id="qOpt2" type="text" placeholder="Option C...">
+      <input id="qOpt3" type="text" placeholder="Option D...">
+      <select class="correct-select" id="qCorrect">
+        <option value="0">Correct Answer: A</option>
+        <option value="1">Correct Answer: B</option>
+        <option value="2">Correct Answer: C</option>
+        <option value="3">Correct Answer: D</option>
+      </select>
+      <button class="btn btn-green" onclick="saveQuestion('${name}')">Save Question</button>
+    </div>`;
+}
+
+async function saveQuestion(name) {
+  const question = document.getElementById('qQuestion').value;
+  const options = [
+    document.getElementById('qOpt0').value,
+    document.getElementById('qOpt1').value,
+    document.getElementById('qOpt2').value,
+    document.getElementById('qOpt3').value,
+  ];
+  const correct = parseInt(document.getElementById('qCorrect').value);
+  if (!question || options.some(o => !o)) {
+    alert('Please fill in all fields!');
+    return;
+  }
+  const res = await fetch('/api/notes/' + name + '/quiz');
+  const existing = await res.json();
+  existing.push({ question, options, correct });
+  await fetch('/api/notes/' + name + '/quiz', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(existing)
+  });
+  studyMode(name);
+}
+
+async function editMode(name) {
+  const res = await fetch('/api/notes/' + name);
+  const content = await res.text();
+  const lines = content.split('\n');
+  let pastYaml = false;
+  let yamlCount = 0;
+  let noteContent = '';
+  for (const line of lines) {
+    if (line === '---') { yamlCount++; if (yamlCount === 2) pastYaml = true; continue; }
+    if (pastYaml) noteContent += line + '\n';
+  }
+  const out = document.getElementById('output');
+  out.className = '';
+  out.innerHTML = `
+    <button class="back-btn" onclick="readNote('${name}')">← Cancel</button>
+    <button class="btn btn-green" style="margin-left:10px" onclick="saveEdit('${name}')">Save</button>
+    <textarea class="edit-area" id="editArea">${noteContent.trim()}</textarea>`;
+}
+
+async function saveEdit(name) {
+  const content = document.getElementById('editArea').value;
+  await fetch('/api/notes/' + name, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content })
+  });
+  readNote(name);
 }
 
 async function createNote() {

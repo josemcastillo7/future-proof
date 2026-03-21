@@ -34,6 +34,39 @@ public class NotesController {
         }
     }
 
+    @PostMapping("/api/auth/login")
+public org.springframework.http.ResponseEntity<String> login(
+        @RequestBody java.util.Map<String, String> body) throws Exception {
+    Path credPath = Path.of(
+        System.getProperty("user.home"), ".notes", "credentials.txt"
+    );
+
+    // Create default credentials if file doesn't exist
+    if (!Files.exists(credPath)) {
+        Files.createDirectories(credPath.getParent());
+        Files.writeString(credPath, "admin:nightnote");
+    }
+
+    String stored = Files.readString(credPath).trim();
+    String[] parts = stored.split(":");
+    String storedUser = parts[0];
+    String storedPass = parts[1];
+
+    String username = body.get("username");
+    String password = body.get("password");
+
+    if (username.equals(storedUser) && password.equals(storedPass)) {
+        return org.springframework.http.ResponseEntity.ok("Login successful");
+    } else {
+        return org.springframework.http.ResponseEntity
+            .status(401).body("Invalid credentials");
+    }
+}
+@PostMapping("/api/auth/logout")
+public String logout() {
+    return "Logged out";
+}
+
     @GetMapping("/api/notes/meta")
     public List<Map<String, String>> getNotesMeta() throws Exception {
         try (Stream<Path> paths = Files.walk(NOTES_DIR, 1)) {

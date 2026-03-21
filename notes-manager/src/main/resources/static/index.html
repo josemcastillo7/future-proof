@@ -84,7 +84,13 @@
   .quiz-option:hover { border-color: #00ff88; color: #fff; }
   .quiz-option.correct { border-color: #00ff88; background: #001a0a; color: #00ff88; }
   .quiz-option.wrong { border-color: #ff4444; background: #1a0000; color: #ff4444; }
-  .quiz-score { font-size: 20px; font-weight: bold; color: #00ff88; text-align: center; padding: 20px; }
+  .score-box { background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 14px; padding: 32px; text-align: center; margin-top: 20px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+  .score-number { font-size: 48px; font-weight: bold; color: #00ff88; }
+  .score-label { font-size: 14px; color: #444; }
+  .score-stats { display: flex; gap: 32px; }
+  .score-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .score-stat-value { font-size: 24px; font-weight: bold; }
+  .score-stat-label { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 1px; }
   .add-question-form { background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 12px; padding: 20px; margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
   .add-question-form input { width: 100%; }
   .correct-select { background: #0f0f0f; border: 1px solid #1a1a1a; color: #fff; padding: 10px; border-radius: 8px; width: 100%; outline: none; }
@@ -98,6 +104,7 @@
     <span class="logo-text">Night<span>Note</span></span>
   </div>
   <div class="navbar-right">
+    <button class="btn btn-outline" onclick="logout()">Logout</button>
     <button class="btn btn-green" onclick="openModal()">+ New Note</button>
   </div>
 </div>
@@ -123,10 +130,10 @@
     </select>
     <div class="filter-group">
       <button class="fbtn fbtn-all active" id="filter-all" onclick="filterByPriority('all')">All</button>
-      <button class="fbtn fbtn-urgent" id="filter-urgent" onclick="filterByPriority('urgent')">● Urgent</button>
-      <button class="fbtn fbtn-high" id="filter-high" onclick="filterByPriority('high')">● High</button>
-      <button class="fbtn fbtn-medium" id="filter-medium" onclick="filterByPriority('medium')">● Medium</button>
-      <button class="fbtn fbtn-low" id="filter-low" onclick="filterByPriority('low')">● Low</button>
+      <button class="fbtn fbtn-urgent" id="filter-urgent" onclick="filterByPriority('urgent')">Urgent</button>
+      <button class="fbtn fbtn-high" id="filter-high" onclick="filterByPriority('high')">High</button>
+      <button class="fbtn fbtn-medium" id="filter-medium" onclick="filterByPriority('medium')">Medium</button>
+      <button class="fbtn fbtn-low" id="filter-low" onclick="filterByPriority('low')">Low</button>
     </div>
   </div>
 
@@ -141,10 +148,10 @@
     <textarea id="newContent" placeholder="Content..."></textarea>
     <select id="newPriority">
       <option value="none">No Priority</option>
-      <option value="low">● Low</option>
-      <option value="medium">● Medium</option>
-      <option value="high">● High</option>
-      <option value="urgent">● Urgent</option>
+      <option value="low">Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+      <option value="urgent">Urgent</option>
     </select>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -155,6 +162,9 @@
 
 <script>
 let allNotes = [];
+let quizAnswers = [];
+let shuffledQuestions = [];
+let currentNoteName = '';
 
 function getPriority(p) {
   p = (p || 'none').toLowerCase().trim();
@@ -173,6 +183,15 @@ function updateStats(notes) {
   document.getElementById('statHigh').textContent = notes.filter(n => (n.priority||'').toLowerCase() === 'high').length;
   document.getElementById('statMedium').textContent = notes.filter(n => (n.priority||'').toLowerCase() === 'medium').length;
   document.getElementById('statLow').textContent = notes.filter(n => (n.priority||'').toLowerCase() === 'low').length;
+}
+
+function shuffle(arr) {
+  let a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 function renderCards(notes) {
@@ -245,6 +264,7 @@ function sortNotes() {
 }
 
 async function readNote(name) {
+  currentNoteName = name;
   const res = await fetch('/api/notes/' + name);
   const content = await res.text();
   const lines = content.split('\n');
@@ -258,15 +278,15 @@ async function readNote(name) {
   const out = document.getElementById('output');
   out.className = '';
   out.innerHTML = `
-    <button class="back-btn" onclick="showAll()">← Back to Notes</button>
+    <button class="back-btn" onclick="showAll()">Back to Notes</button>
     <button class="btn btn-green" style="margin-left:10px" onclick="editMode('${name}')">Edit</button>
-    <button class="btn btn-outline" style="margin-left:10px" onclick="studyMode('${name}')">📚 Study</button>
+    <button class="btn btn-outline" style="margin-left:10px" onclick="studyMode('${name}')">Study</button>
     <div class="note-view">${noteContent.trim()}</div>
     <div class="drop-zone" id="dropZone"
          ondragover="event.preventDefault(); this.classList.add('dragover')"
          ondragleave="this.classList.remove('dragover')"
          ondrop="handleDrop(event, '${name}')">
-      🖼️ Drag and drop a photo here
+      Drag and drop a photo here
     </div>
     <div class="note-images" id="noteImages"></div>`;
   loadImages(name);
@@ -302,49 +322,92 @@ async function loadImages(name) {
 }
 
 async function studyMode(name) {
+  currentNoteName = name;
   const res = await fetch('/api/notes/' + name + '/quiz');
   const questions = await res.json();
   const out = document.getElementById('output');
   out.className = '';
   if (questions.length === 0) {
     out.innerHTML = `
-      <button class="back-btn" onclick="readNote('${name}')">← Back</button>
+      <button class="back-btn" onclick="readNote('${name}')">Back to Note</button>
       <p style="color:#444; margin: 20px 0;">No quiz questions yet!</p>
       ${renderAddQuestionForm(name)}`;
     return;
   }
+  shuffledQuestions = shuffle(questions);
+  quizAnswers = new Array(shuffledQuestions.length).fill(null);
+  renderQuiz(name);
+}
+
+function renderQuiz(name) {
+  const out = document.getElementById('output');
+  out.className = '';
   out.innerHTML = `
-    <button class="back-btn" onclick="readNote('${name}')">← Back to Note</button>
+    <button class="back-btn" onclick="readNote('${name}')">Back to Note</button>
     <button class="btn btn-outline" style="margin-left:10px" onclick="addQuestionMode('${name}')">+ Add Question</button>
     <div class="quiz-container" id="quizContainer">
-      ${questions.map((q, i) => `
+      ${shuffledQuestions.map((q, i) => `
         <div class="quiz-question" id="q${i}">
           <div class="quiz-question-text">${i+1}. ${q.question}</div>
           ${q.options.map((opt, j) => `
             <button class="quiz-option" id="opt${i}-${j}"
-              onclick="checkAnswer(${i}, ${j}, ${q.correct})">
+              onclick="checkAnswer(${i}, ${j}, ${q.correct}, '${name}')">
               ${String.fromCharCode(65+j)}. ${opt}
             </button>`).join('')}
         </div>`).join('')}
     </div>`;
 }
 
-function checkAnswer(qIndex, selectedIndex, correctIndex) {
+function checkAnswer(qIndex, selectedIndex, correctIndex, name) {
   const buttons = document.querySelectorAll(`#q${qIndex} .quiz-option`);
   buttons.forEach(b => b.disabled = true);
+  quizAnswers[qIndex] = selectedIndex === correctIndex;
   if (selectedIndex === correctIndex) {
     buttons[selectedIndex].classList.add('correct');
   } else {
     buttons[selectedIndex].classList.add('wrong');
     buttons[correctIndex].classList.add('correct');
   }
+  if (quizAnswers.every(a => a !== null)) {
+    setTimeout(() => showScore(name), 800);
+  }
+}
+
+function showScore(name) {
+  const correct = quizAnswers.filter(a => a === true).length;
+  const wrong = quizAnswers.filter(a => a === false).length;
+  const total = quizAnswers.length;
+  const pct = Math.round((correct / total) * 100);
+  const out = document.getElementById('output');
+  out.className = '';
+  out.innerHTML = `
+    <button class="back-btn" onclick="readNote('${name}')">Back to Note</button>
+    <div class="score-box">
+      <div class="score-number">${pct}%</div>
+      <div class="score-label">Your Score</div>
+      <div class="score-stats">
+        <div class="score-stat">
+          <span class="score-stat-value" style="color:#00ff88">${correct}</span>
+          <span class="score-stat-label">Correct</span>
+        </div>
+        <div class="score-stat">
+          <span class="score-stat-value" style="color:#ff4444">${wrong}</span>
+          <span class="score-stat-label">Wrong</span>
+        </div>
+        <div class="score-stat">
+          <span class="score-stat-value" style="color:#fff">${total}</span>
+          <span class="score-stat-label">Total</span>
+        </div>
+      </div>
+      <button class="btn btn-green" onclick="studyMode('${name}')">Retake Quiz</button>
+    </div>`;
 }
 
 function addQuestionMode(name) {
   const out = document.getElementById('output');
   out.className = '';
   out.innerHTML = `
-    <button class="back-btn" onclick="studyMode('${name}')">← Back to Quiz</button>
+    <button class="back-btn" onclick="studyMode('${name}')">Back to Quiz</button>
     ${renderAddQuestionForm(name)}`;
 }
 
@@ -405,7 +468,7 @@ async function editMode(name) {
   const out = document.getElementById('output');
   out.className = '';
   out.innerHTML = `
-    <button class="back-btn" onclick="readNote('${name}')">← Cancel</button>
+    <button class="back-btn" onclick="readNote('${name}')">Cancel</button>
     <button class="btn btn-green" style="margin-left:10px" onclick="saveEdit('${name}')">Save</button>
     <textarea class="edit-area" id="editArea">${noteContent.trim()}</textarea>`;
 }
@@ -440,6 +503,11 @@ async function deleteNote(name) {
   if (!confirm('Delete ' + name + '?')) return;
   await fetch('/api/notes/' + name, { method: 'DELETE' });
   showAll();
+}
+
+async function logout() {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  window.location.href = '/login.html';
 }
 
 function openModal() { document.getElementById('createModal').classList.add('open'); }

@@ -54,7 +54,11 @@
   .badge-low { background: #001a0a; color: #00ff88; }
   .badge-none { background: #111; color: #444; }
   .card-file { font-size: 11px; color: #222; }
-  .card-footer { display: flex; justify-content: flex-end; margin-top: auto; }
+  .due-tag { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: bold; }
+  .due-overdue { background: #1a0000; color: #ff4444; }
+  .due-soon { background: #1a1400; color: #ffee00; }
+  .due-ok { background: #001a0a; color: #00ff88; }
+  .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
   .btn-del { background: transparent; color: #333; border: 1px solid #1a1a1a; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 11px; }
   .btn-del:hover { color: #ff4444; border-color: #ff4444; }
   .modal-wrap { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10; justify-content: center; align-items: center; }
@@ -62,10 +66,12 @@
   .modal { background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 16px; padding: 28px; width: 480px; display: flex; flex-direction: column; gap: 14px; }
   .modal-title { font-size: 16px; font-weight: bold; color: #fff; }
   .modal input, .modal textarea, .modal select { width: 100%; background: #080808; border: 1px solid #1a1a1a; color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 13px; outline: none; }
+  .modal input[type="date"] { color-scheme: dark; }
   .modal input:focus, .modal textarea:focus { border-color: #00ff88; }
   .modal textarea { height: 130px; resize: vertical; }
   .modal select option { background: #0d0d0d; }
   .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .modal-label { font-size: 12px; color: #444; margin-bottom: -8px; }
   .note-view { background: #0d0d0d; border: 1px solid #151515; border-radius: 14px; padding: 28px; white-space: pre-wrap; font-size: 14px; color: #888; line-height: 1.8; margin-top: 16px; position: relative; }
   .back-btn { background: transparent; color: #fff; border: 1px solid #222; padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 13px; margin-bottom: 16px; }
   .back-btn:hover { background: #111; }
@@ -127,6 +133,7 @@
       <option value="date-old">Sort: Oldest First</option>
       <option value="priority">Sort: Priority</option>
       <option value="title">Sort: A-Z</option>
+      <option value="due">Sort: Due Date</option>
     </select>
     <div class="filter-group">
       <button class="fbtn fbtn-all active" id="filter-all" onclick="filterByPriority('all')">All</button>
@@ -153,6 +160,8 @@
       <option value="high">High</option>
       <option value="urgent">Urgent</option>
     </select>
+    <p class="modal-label">Due Date (optional)</p>
+    <input id="newDue" type="date">
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
       <button class="btn btn-green" onclick="createNote()">Save Note</button>
@@ -175,6 +184,16 @@ function getPriority(p) {
     low:    ['low',    'Low',    'badge-low'],
   };
   return map[p] || ['none', 'None', 'badge-none'];
+}
+
+function getDueTag(due) {
+  if (!due || due.trim() === '') return '';
+  const dueDate = new Date(due);
+  const now = new Date();
+  const diffDays = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return `<span class="due-tag due-overdue">Overdue ${Math.abs(diffDays)}d ago</span>`;
+  if (diffDays <= 2) return `<span class="due-tag due-soon">Due in ${diffDays}d</span>`;
+  return `<span class="due-tag due-ok">Due ${dueDate.toLocaleDateString()}</span>`;
 }
 
 function updateStats(notes) {
@@ -204,6 +223,7 @@ function renderCards(notes) {
   out.className = 'cards';
   out.innerHTML = notes.map(n => {
     const [cls, label, badgeCls] = getPriority(n.priority);
+    const dueTag = getDueTag(n.due);
     return `
       <div class="card ${cls}" onclick="readNote('${n.file}')">
         <div class="card-header">
@@ -211,6 +231,7 @@ function renderCards(notes) {
           <span class="badge ${badgeCls}">${label}</span>
         </div>
         <div class="card-file">${n.created ? n.created.substring(0, 10) : n.file}</div>
+        ${dueTag ? `<div>${dueTag}</div>` : ''}
         <div class="card-footer">
           <button class="btn-del" onclick="event.stopPropagation(); deleteNote('${n.file}')">Delete</button>
         </div>
@@ -259,6 +280,12 @@ function sortNotes() {
     );
   } else if (sort === 'title') {
     sorted.sort((a, b) => a.title.localeCompare(b.title));
+  } else if (sort === 'due') {
+    sorted.sort((a, b) => {
+      if (!a.due || a.due.trim() === '') return 1;
+      if (!b.due || b.due.trim() === '') return -1;
+      return new Date(a.due) - new Date(b.due);
+    });
   }
   renderCards(sorted);
 }
@@ -487,15 +514,17 @@ async function createNote() {
   const title = document.getElementById('newTitle').value;
   const content = document.getElementById('newContent').value;
   const priority = document.getElementById('newPriority').value;
+  const due = document.getElementById('newDue').value;
   if (!title) return;
   await fetch('/api/notes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, content, priority })
+    body: JSON.stringify({ title, content, priority, due })
   });
   closeModal();
   document.getElementById('newTitle').value = '';
   document.getElementById('newContent').value = '';
+  document.getElementById('newDue').value = '';
   showAll();
 }
 

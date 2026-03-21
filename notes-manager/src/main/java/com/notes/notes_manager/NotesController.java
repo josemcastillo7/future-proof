@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -88,6 +89,7 @@ public String logout() {
                             if (line.startsWith("title:")) meta.put("title", line.substring(6).trim());
                             if (line.startsWith("priority:")) meta.put("priority", line.substring(9).trim());
                             if (line.startsWith("created:")) meta.put("created", line.substring(8).trim());
+                            if (line.startsWith("due:")) meta.put("due", line.substring(4).trim());
                         }
                     } catch (Exception e) {}
                     return meta;
@@ -141,6 +143,7 @@ public String logout() {
         String title = body.get("title");
         String content = body.get("content");
         String priority = body.getOrDefault("priority", "none");
+        String due = body.getOrDefault("due", "");
 
         String filename = title.toLowerCase()
             .replaceAll(" ", "-")
